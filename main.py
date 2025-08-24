@@ -45,15 +45,12 @@ client = AzureOpenAI(
 )
 
 
-### Zach - News data API call
-
-
 ### Justin - OpenAI call
 
 
 def summarize_with_openai():
     processed_articles = clean_data(fetch_news_data())
-
+		
     prompt = f"""
     You are a professional stock market analyst. Here are the latest news articles:
 
@@ -137,3 +134,5 @@ def main(page: ft.Page):
 
     refresh_news(page, articles_container)
 
+if os.name == "main":
+    ft.app(target=main)
