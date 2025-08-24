@@ -46,7 +46,7 @@ client = AzureOpenAI(
 
 
 
-def summarize_with_openai(articles):
+def summarize_with_openai(top_headlines):
 	processed_articles = clean_data(top_headlines)
 
 	prompt = f"""
