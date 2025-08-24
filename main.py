@@ -14,6 +14,7 @@ from langchain_openai import AzureChatOpenAI
 from newsapi import NewsApiClient
 
 
+### Zach - News data API call
 newsapi = NewsApiClient(
 	api_key=os.getenv("NEWS_API_KEY")                   
 )
@@ -24,9 +25,9 @@ top_headlines = newsapi.get_top_headlines(
     country='us'
 )
 
-articles = clean_data(top_headlines)
-for article in articles:
-    print(article)
+# articles = clean_data(top_headlines)
+# for article in articles:
+#     print(article)
     
 model_name = os.getenv("MODEL_NAME")
 
@@ -42,11 +43,11 @@ client = AzureOpenAI(
 
 ### Justin - OpenAI call
 
-def format_articles(articles):
+
 
 
 def summarize_with_openai(articles):
-	processed_articles = format_articles(articles)
+	processed_articles = clean_data(top_headlines)
 
 	prompt = f"""
 	You are a professional stock market analyst. Here are the latest news articles:
