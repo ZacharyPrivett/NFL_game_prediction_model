@@ -19,11 +19,18 @@ newsapi = NewsApiClient(
 	api_key=os.getenv("NEWS_API_KEY")                   
 )
 
-top_headlines = newsapi.get_top_headlines(
-    category='business', 
-    language='en',
-    country='us'
-)
+def fetch_news_data():
+    return newsapi.get_top_headlines(
+    	category='business', 
+    	language='en',
+    	country='us'
+	)
+
+# top_headlines = newsapi.get_top_headlines(
+#     category='business', 
+#     language='en',
+#     country='us'
+# )
 
 # articles = clean_data(top_headlines)
 # for article in articles:
@@ -44,41 +51,39 @@ client = AzureOpenAI(
 ### Justin - OpenAI call
 
 
+def summarize_with_openai():
+    processed_articles = clean_data(fetch_news_data())
 
+    prompt = f"""
+    You are a professional stock market analyst. Here are the latest news articles:
 
-def summarize_with_openai(top_headlines):
-	processed_articles = clean_data(top_headlines)
+    {processed_articles}
 
-	prompt = f"""
-	You are a professional stock market analyst. Here are the latest news articles:
+    For each article:
+    1. Summarize it in 2-3 sentences.
+    2. Rank it on a scale of 1-5 for usefulness in predicting stock market trends.
+    3. Provide a short rationale for the ranking.
+    4. Based on the market trends. Recommend which stocks to purchase.
 
-	{processed_articles}
+    Format your output clearly by article.
 
-	For each article:
-	1. Summarize it in 2-3 sentences.
-	2. Rank it on a scale of 1-5 for usefulness in predicting stock market trends.
-	3. Provide a short rationale for the ranking.
-	4. Based on the market trends. Recommend which stocks to purchase.
+    """
 
-	Format your output clearly by article.
-
-	"""
-
-	response = client.chat.completions.create(
-		model=model_name,
-		messages=[
-			{
-				"role": "system",
-				"content": "You are a professional stock market analyst, Your job is to rank news articles by how useful they are for predicting market trends. Provide clear reasoning"
-			},
-			{
-				"role": "user",
-				"content": prompt
-			}
-		],
-		max_tokens=20
-	)
-	text_output = response.choices[0].message.content.strip()
+    response = client.chat.completions.create(
+        model=model_name,
+        messages=[
+            {
+                "role": "system",
+                "content": "You are a professional stock market analyst, Your job is to rank news articles by how useful they are for predicting market trends. Provide clear reasoning"
+            },
+            {
+                "role": "user",
+                "content": prompt
+            }
+        ],
+        max_tokens=20
+    )
+    text_output = response.choices[0].message.content.strip()
     try:
         return json.loads(text_output)
     except json.JSONDecodeError:
@@ -86,8 +91,8 @@ def summarize_with_openai(top_headlines):
         return []
 
 def refresh_news(page: ft.Page, container: ft.Column):
-    articles = fetch_headlines()
-    ranked_articles = summarize_with_openai(articles)
+    # articles = fetch_headlines()
+    ranked_articles = summarize_with_openai()
 
     container.controls.clear()
     for art in ranked_articles:
