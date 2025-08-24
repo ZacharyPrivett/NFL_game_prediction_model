@@ -7,9 +7,27 @@ import json
 from dotenv import load_dotenv
 load_dotenv()
 
+from data.data_cleaning import clean_data
+
 from langchain_openai import AzureChatOpenAI
 
-news_api_key = os.getenv("NEWS_API_KEY")
+from newsapi import NewsApiClient
+
+
+newsapi = NewsApiClient(
+	api_key=os.getenv("NEWS_API_KEY")                   
+)
+
+top_headlines = newsapi.get_top_headlines(
+    category='business', 
+    language='en',
+    country='us'
+)
+
+articles = clean_data(top_headlines)
+for article in articles:
+    print(article)
+    
 model_name = os.getenv("MODEL_NAME")
 
 client = AzureOpenAI(
@@ -112,3 +130,4 @@ def main(page: ft.Page):
     )
 
     refresh_news(page, articles_container)
+
