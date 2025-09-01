@@ -9,12 +9,9 @@ load_dotenv()
 
 from data.data_cleaning import clean_data
 
-from langchain_openai import AzureChatOpenAI
-
 from newsapi import NewsApiClient
 
 
-### Zach - News data API call
 newsapi = NewsApiClient(
 	api_key=os.getenv("NEWS_API_KEY")                   
 )
@@ -23,19 +20,10 @@ def fetch_news_data():
     return newsapi.get_top_headlines(
     	category='business', 
     	language='en',
-    	country='us'
+    	country='us',
+        page_size=5
 	)
-
-# top_headlines = newsapi.get_top_headlines(
-#     category='business', 
-#     language='en',
-#     country='us'
-# )
-
-# articles = clean_data(top_headlines)
-# for article in articles:
-#     print(article)
-    
+  
 model_name = os.getenv("MODEL_NAME")
 
 client = AzureOpenAI(
@@ -44,13 +32,9 @@ client = AzureOpenAI(
     api_version = os.getenv("API_VERSION"),
 )
 
-
-### Justin - OpenAI call
-
-
 def summarize_with_openai():
     processed_articles = clean_data(fetch_news_data())
-		
+        
     prompt = f"""
     You are a professional stock market analyst. Here are the latest news articles:
 
@@ -60,10 +44,10 @@ def summarize_with_openai():
     1. Summarize it in 2-3 sentences.
     2. Rank it on a scale of 1-5 for usefulness in predicting stock market trends.
     3. Provide a short rationale for the ranking.
-    4. Based on the market trends. Recommend which stocks to purchase.
+    4. Based on the market trends, recommend which stocks to purchase.
 
-    Format your output clearly by article.
-
+    Format your output as a JSON array of objects, with keys: title, summary, usefulness, reason, recommendedStocks (as a list of stock symbols), date published.
+    Respond ONLY with the JSON array, no extra text.
     """
 
     response = client.chat.completions.create(
@@ -71,40 +55,57 @@ def summarize_with_openai():
         messages=[
             {
                 "role": "system",
-                "content": "You are a professional stock market analyst, Your job is to rank news articles by how useful they are for predicting market trends. Provide clear reasoning"
+                "content": "You are a professional stock market analyst. Your job is to rank news articles by how useful they are for predicting market trends. Provide clear reasoning."
             },
             {
                 "role": "user",
                 "content": prompt
             }
         ],
-        max_tokens=20
+        max_completion_tokens=3000
     )
     text_output = response.choices[0].message.content.strip()
+    print("LLM raw output:\n", text_output)  # Debug: print raw output
+
+    if not text_output:
+        print("Warning: LLM returned empty output.")
+        return []
+
     try:
-        return json.loads(text_output)
-    except json.JSONDecodeError:
-        print("Error parsing JSON from LLM output")
+        if not text_output.startswith("["):
+            json_start = text_output.find("[")
+            json_end = text_output.rfind("]") + 1
+            text_output = text_output[json_start:json_end]
+        articles = json.loads(text_output)
+        return articles
+    except Exception as e:
+        print("Error parsing JSON from LLM output:", e)
+        print("Raw output was:\n", text_output)
         return []
 
 def refresh_news(page: ft.Page, container: ft.Column):
-    # articles = fetch_headlines()
     ranked_articles = summarize_with_openai()
 
     container.controls.clear()
     for art in ranked_articles:
         card = ft.Card(
-            content=ft.Column(
-                controls=[
-                    ft.Text(art.get("title", "N/A"), weight="bold", size=16),
-                    ft.Text(f"Summary: {art.get('summary', 'N/A')}"),
-                    ft.Text(f"Usefulness: {art.get('usefulness', 'N/A')}"),
-                    ft.Text(f"Reason: {art.get('reason', 'N/A')}", italic=True),
-                ],
-                spacing=4,
+            content=ft.Container(
+                content=ft.Column(
+                    controls=[
+                        ft.Text(art.get("title", "N/A"), weight="bold", size=16),
+                        ft.Text(f"Summary: {art.get('summary', 'N/A')}"),
+                        ft.Text(f"Usefulness: {art.get('usefulness', 'N/A')}"),
+                        ft.Text(f"Reason: {art.get('reason', 'N/A')}"),
+                        ft.Text(
+                            f"Recommendation: {', '.join(art.get('recommendedStocks', [])) if art.get('recommendedStocks') else 'N/A'}",
+                            italic=True
+                        )
+                    ],
+                    spacing=4,
+                ),
+                padding=10,
             ),
             elevation=3,
-            padding=10,
         )
         container.controls.append(card)
     page.update()
@@ -134,5 +135,5 @@ def main(page: ft.Page):
 
     refresh_news(page, articles_container)
 
-if os.name == "main":
+if __name__ == "__main__":
     ft.app(target=main)
