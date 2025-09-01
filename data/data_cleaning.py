@@ -10,5 +10,6 @@ def clean_data(top_headlines):
             "publishedAt": article.get("publishedAt")
         }
         cleaned_articles.append(cleaned)
-        print(cleaned_articles)
+        for article in cleaned_articles:
+            print(article)
     return cleaned_articles
